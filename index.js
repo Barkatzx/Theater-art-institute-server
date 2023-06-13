@@ -1,5 +1,5 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -31,10 +31,16 @@ async function run() {
     const usersCollection = client.db('SummerDB').collection('users');
 
 
+     // users related apis
+     app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
     app.post('/users', async (req, res) => {
       try {
-        const { name, email } = req.body;
-        const user = { name, email };
+        const user = req.body;
+        const query = { email: user.email }
         const existingUser = await usersCollection.findOne(query);
         if (existingUser) {
           return res.send({ message: 'User Already Exists'})
@@ -47,10 +53,15 @@ async function run() {
       }
     });
 
-
-      // users related apis
-    app.get('/users', async (req, res) => {
-      const result = await usersCollection.find().toArray();
+    app.patch('users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: 'admin'
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
