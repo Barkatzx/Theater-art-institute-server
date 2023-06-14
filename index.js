@@ -69,7 +69,6 @@ async function run() {
       next();
     }
 
-        //verify instructor function
         const verifyInstructor = async (req, res, next) => {
           const email = req.decoded.email;
           const query = { email: email };
@@ -82,7 +81,50 @@ async function run() {
           next();
         };
 
-     // users related apis
+        const verifyStudent = async (req, res, next) => {
+          const email = req.decoded.email;
+          const query = { email: email };
+          const user = await usersCollection.findOne(query);
+          if (user?.role !== "student") {
+            return res
+              .status(403)
+              .send({ error: true, message: "Forbidden Access" });
+          }
+          next();
+        };
+
+        app.post("/selectClass", verifyJWT, async (req, res) => {
+          const body = req.body;
+          const result = await SelectClassCollection.insertOne(body);
+          res.send(result);
+        });
+
+        app.get("/selectedClass", async (req, res) => {
+          const email = req.query.email;
+          console.log(email);
+          if (!email) {
+            res.send([]);
+          }
+          const query = { email: email };
+          const result = await SelectClassCollection.find(query).toArray();
+          res.send(result);
+        });
+
+        app.delete("/selectedClass/:id", async (req, res) => {
+          const id = req.params.id;
+          const query = { _id: new ObjectId(id) };
+          const result = await SelectClassCollection.deleteOne(query);
+          res.send(result);
+        });
+
+        app.post("/feedback", async (req, res) => {
+          const body = req.body;
+          console.log(body);
+          const result = await feedbackCollection.insertOne(body);
+          res.send(result);
+        });
+
+
      app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
@@ -158,7 +200,86 @@ async function run() {
       res.send(result);
     })
 
+    app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
 
+      if (req.decoded.email !== email) {
+        res.send({ instructor: false })
+      }
+
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const result = { instructor: user?.role === 'instructor' }
+      res.send(result);
+    })
+
+
+    app.get('/users/student/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({ student: false })
+      }
+
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const result = { student: user?.role === 'student' }
+      res.send(result);
+    })
+
+    app.get("/users/instructor", async (req, res) => {
+      const result = await usersCollection
+        .find({ role: "instructor" })
+        .toArray();
+      res.send(result);
+    });
+
+
+    app.post("/class", verifyJWT, verifyInstructor, async (req, res) => {
+      const newItem = req.body;
+      const result = await classCollection.insertOne(newItem);
+      res.send(result);
+    });
+
+    app.get("/class", async (req, res) => {
+      const result = await classCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get(
+      "/class/instructor/:email",
+      verifyJWT,
+
+      async (req, res) => {
+        const email = req.params.email;
+        const result = await classCollection.find({ email: email }).toArray();
+        res.send(result);
+      }
+    );
+    app.patch("/class/approved/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateClass = req.body;
+      const updateDoc = {
+        $set: {
+          status: updateClass.status,
+        },
+      };
+      const result = await classCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+    app.patch("/class/deny/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateClass = req.body;
+      const updateDoc = {
+        $set: {
+          status: updateClass.status,
+        },
+      };
+      const result = await classCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
 
 
     console.log("Connected to MongoDB successfully!");
