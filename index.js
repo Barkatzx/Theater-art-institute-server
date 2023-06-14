@@ -69,6 +69,19 @@ async function run() {
       next();
     }
 
+        //verify instructor function
+        const verifyInstructor = async (req, res, next) => {
+          const email = req.decoded.email;
+          const query = { email: email };
+          const user = await usersCollection.findOne(query);
+          if (user?.role !== "instructor") {
+            return res
+              .status(403)
+              .send({ error: true, message: "Forbidden Access" });
+          }
+          next();
+        };
+
      // users related apis
      app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
