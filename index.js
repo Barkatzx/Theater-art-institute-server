@@ -17,7 +17,6 @@ const verifyJWT = (req, res, next) => {
   }
   // bearer token
   const token = authorization.split(' ')[1];
-
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
       return res.status(401).send({ error: true, message: 'unauthorized access' })
@@ -46,7 +45,12 @@ async function run() {
     await client.connect();
 
     const usersCollection = client.db('SummerDB').collection('users');
-
+    const classCollection = client.db("SummerDB").collection("class");
+    // const paymentCollection = client.db("SummerDB").collection("payment");
+    const feedbackCollection = client.db("SummerDB").collection("feedback");
+    const SelectClassCollection = client
+      .db("SummerDB")
+      .collection("select-class");
 
     app.post('/jwt', (req, res) => {
       const user = req.body;
@@ -153,7 +157,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get('/', (req, res) => {
-  res.send('Summer Camp Server Running');
+  res.send('Summer Camp Server is Running');
 });
 
 app.listen(port, () => {
