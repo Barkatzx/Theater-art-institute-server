@@ -79,15 +79,20 @@ async function run() {
         if (existingUser) {
           return res.send({ message: 'User Already Exists' });
         }
-        user.role = user.role || 'student';
     
-        const result = await usersCollection.insertOne(user);
+        const { photoURL, ...userData } = user;
+        userData.role = userData.role || 'student';
+        userData.photoURL = photoURL || '';
+    
+        const result = await usersCollection.insertOne(userData);
         res.status(201).json({ insertedId: result.insertedId });
       } catch (error) {
         console.error('Failed to save user:', error);
         res.status(500).json({ error: 'Failed to save user' });
       }
     });
+    
+    
 
     app.delete('/users/:id', async (req, res) => {
       const id = req.params.id;
