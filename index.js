@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 require('dotenv').config();
 
 const app = express();
@@ -46,7 +47,7 @@ async function run() {
 
     const usersCollection = client.db('SummerDB').collection('users');
     const classCollection = client.db("SummerDB").collection("class");
-    // const paymentCollection = client.db("SummerDB").collection("payment");
+    const paymentCollection = client.db("SummerDB").collection("payment");
     const feedbackCollection = client.db("SummerDB").collection("feedback");
     const SelectClassCollection = client
       .db("SummerDB")
@@ -234,6 +235,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/users/student", async (req, res) => {
+      const result = await usersCollection
+        .find({ role: "student" })
+        .toArray();
+      res.send(result);
+    });
+
 
     app.post("/class", verifyJWT, verifyInstructor, async (req, res) => {
       const newItem = req.body;
@@ -278,6 +286,47 @@ async function run() {
         },
       };
       const result = await classCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const { price } = req.body;
+      if (price <= 0) {
+        return res.send({});
+      }
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+
+    app.post("/payment", async (req, res) => {
+      const body = req.body;
+      console.log(body);
+      const InsertResult = await paymentCollection.insertOne(body);
+
+      const query = {
+        _id: { $in: body.classId.map((id) => new ObjectId(id)) },
+      };
+      const deleteResult = await classCollection.deleteMany(query);
+      res.send({ InsertResult, deleteResult });
+    });
+
+    
+    app.get("/payment", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      console.log(email);
+      if (!email) {
+        res.send([]);
+      }
+      const query = { email: email };
+      const result = await paymentCollection.find(query).toArray();
       res.send(result);
     });
 
