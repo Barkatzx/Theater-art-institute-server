@@ -45,7 +45,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server
-    // await client.connect();
+    //  client.connect();
 
     const usersCollection = client.db('SummerDB').collection('users');
     const classCollection = client.db("SummerDB").collection("class");
@@ -313,11 +313,7 @@ async function run() {
       }
 
     });
-        
 
-
-
-    //payment details post api
     app.post("/payment", async (req, res) => {
       const body = req.body;
       console.log(body);
@@ -330,7 +326,6 @@ async function run() {
       res.send({ InsertResult, deleteResult });
     });
 
-    //payment history api
     app.get("/payment", verifyJWT, async (req, res) => {
       const email = req.query.email;
       console.log(email);
