@@ -1,8 +1,9 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 require('dotenv').config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -11,12 +12,13 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+
 const verifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
   if (!authorization) {
     return res.status(401).send({ error: true, message: 'unauthorized access' });
   }
-  // bearer token
+
   const token = authorization.split(' ')[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
@@ -43,7 +45,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server
-    await client.connect();
+    // await client.connect();
 
     const usersCollection = client.db('SummerDB').collection('users');
     const classCollection = client.db("SummerDB").collection("class");
@@ -289,23 +291,33 @@ async function run() {
       res.send(result);
     });
 
+
     app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const { price } = req.body;
       if (price <= 0) {
         return res.send({});
       }
       const amount = parseInt(price * 100);
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
-      });
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (error) {
+        console.error("Error creating payment intent:", error);
+        res.status(500).json({ error: "Failed to create payment intent" });
+      }
+
     });
+        
 
 
+
+    //payment details post api
     app.post("/payment", async (req, res) => {
       const body = req.body;
       console.log(body);
@@ -318,7 +330,7 @@ async function run() {
       res.send({ InsertResult, deleteResult });
     });
 
-    
+    //payment history api
     app.get("/payment", verifyJWT, async (req, res) => {
       const email = req.query.email;
       console.log(email);
@@ -329,6 +341,8 @@ async function run() {
       const result = await paymentCollection.find(query).toArray();
       res.send(result);
     });
+
+
 
 
     console.log("Connected to MongoDB successfully!");
